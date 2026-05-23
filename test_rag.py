@@ -1,12 +1,10 @@
-from query_data import query_rag
-from langchain_community.llms.ollama import Ollama
+import re
 
-EVAL_PROMPT = """
-Expected Response: {expected_response}
-Actual Response: {actual_response}
----
-(Answer with 'true' or 'false') Does the actual response match the expected response? 
-"""
+from query_data import query_rag
+
+
+def normalize_text(text: str) -> str:
+    return re.sub(r"\s+", " ", text.strip().lower())
 
 
 def test_monopoly_rules():
@@ -25,25 +23,17 @@ def test_ticket_to_ride_rules():
 
 def query_and_validate(question: str, expected_response: str):
     response_text = query_rag(question)
-    prompt = EVAL_PROMPT.format(
-        expected_response=expected_response, actual_response=response_text
-    )
+    actual = normalize_text(response_text)
+    expected = normalize_text(expected_response)
 
-    model = Ollama(model="mistral")
-    evaluation_results_str = model.invoke(prompt)
-    evaluation_results_str_cleaned = evaluation_results_str.strip().lower()
+    result = actual == expected
+    print(f"Question: {question}")
+    print(f"Expected: {expected}")
+    print(f"Actual: {actual}")
 
-    print(prompt)
-
-    if "true" in evaluation_results_str_cleaned:
-        # Print response in Green if it is correct.
-        print("\033[92m" + f"Response: {evaluation_results_str_cleaned}" + "\033[0m")
-        return True
-    elif "false" in evaluation_results_str_cleaned:
-        # Print response in Red if it is incorrect.
-        print("\033[91m" + f"Response: {evaluation_results_str_cleaned}" + "\033[0m")
-        return False
+    if result:
+        print("\033[92mResponse: true\033[0m")
     else:
-        raise ValueError(
-            f"Invalid evaluation result. Cannot determine if 'true' or 'false'."
-        )
+        print("\033[91mResponse: false\033[0m")
+
+    return result
